@@ -1,11 +1,6 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
-import xgboost as xgb
-import tensorflow as tf
-from tensorflow import keras
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error
 import time
 from datetime import datetime
 import google.generativeai as genai
@@ -41,23 +36,6 @@ selected_challenge = st.selectbox("🔍 Select Your Challenge:", list(challenges
 
 def get_difficulty_multiplier(challenge):
     return challenges[challenge] * 0.2
-
-# AI Model Training
-@st.cache_resource
-def train_ml_model():
-    np.random.seed(42)
-    data_size = 2000
-    X = np.random.randint(50, 250, (data_size, 3))
-    y = np.random.randint(5, 25, data_size)  # Wait time prediction
-    
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = xgb.XGBRegressor(n_estimators=200, learning_rate=0.05, random_state=42)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    error = mean_absolute_error(y_test, y_pred)
-    return model, error
-
-model, model_error = train_ml_model()
 
 def predict_peak_traffic(date):
     np.random.seed(hash(date) % 1000)
@@ -98,12 +76,9 @@ recommended_staffing = adjust_staffing(predicted_traffic)
 menu_suggestions = dynamic_menu_adjustment(predicted_traffic)
 difficulty_multiplier = get_difficulty_multiplier(selected_challenge)
 
-# Predict wait time using ML Model
-predicted_wait_time = model.predict([[predicted_traffic, recommended_staffing, 30]])[0]
-
 # Simulated Current Performance Data
 current_data = {
-    "avg_wait_time": round(predicted_wait_time, 2),
+    "avg_wait_time": round(np.random.uniform(5, 15), 2),
     "table_turnover_rate": round(np.random.uniform(1.7, 2.5), 2),
     "customer_satisfaction": round(np.random.uniform(4.2, 4.8), 1),
     "labor_cost_percentage": np.random.randint(27, 33),
@@ -123,7 +98,7 @@ with col1:
 with col2:
     st.metric(label="👨‍🍳 Recommended Staff", value=f"{recommended_staffing} members")
 with col3:
-    st.metric(label="⌛ Predicted Wait Time", value=f"{predicted_wait_time:.2f} min", delta=f"±{model_error:.2f} min")
+    st.metric(label="⌛ Predicted Wait Time", value=f"{current_data['avg_wait_time']:.2f} min")
 
 st.write(f"🍽 **Menu Adjustments:** {menu_suggestions}")
 
@@ -141,3 +116,4 @@ leaderboard_data.sort_values(by="Score", ascending=False, inplace=True)
 st.sidebar.dataframe(leaderboard_data)
 
 st.success("✅ Challenge Attempt Recorded. Track your progress in the sidebar!")
+
