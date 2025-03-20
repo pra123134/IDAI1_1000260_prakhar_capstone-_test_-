@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
 import time
 from datetime import datetime
-import plotly.express as px
 import google.generativeai as genai
 
 # ✅ Configure API Key for Gemini 1.5 Pro
@@ -132,15 +131,6 @@ st.write(f"🍽 **Menu Adjustments:** {menu_suggestions}")
 st.subheader("🔍 AI-Generated Insights")
 st.write(ai_insights)
 
-# Performance Heatmap
-data_heatmap = {
-    "Metric": ["Avg Wait Time", "Table Turnover", "Satisfaction", "Labor Cost %"],
-    "Value": [current_data["avg_wait_time"], current_data["table_turnover_rate"], current_data["customer_satisfaction"], current_data["labor_cost_percentage"]]
-}
-df_heatmap = pd.DataFrame(data_heatmap)
-fig = px.bar(df_heatmap, x="Metric", y="Value", color="Metric", title="📊 Performance Heatmap")
-st.plotly_chart(fig, use_container_width=True)
-
 # Team-Based Multiplayer Leaderboard
 st.sidebar.title("🏆 Leaderboard")
 leaderboard_data = pd.DataFrame({
@@ -151,4 +141,3 @@ leaderboard_data.sort_values(by="Score", ascending=False, inplace=True)
 st.sidebar.dataframe(leaderboard_data)
 
 st.success("✅ Challenge Attempt Recorded. Track your progress in the sidebar!")
-
