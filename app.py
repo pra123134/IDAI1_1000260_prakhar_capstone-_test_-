@@ -9,6 +9,8 @@ from sklearn.metrics import mean_absolute_error
 import google.generativeai as genai
 import time
 from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials, db
 
 # ✅ Configure API Key securely
 if "GOOGLE_API_KEY" in st.secrets:
@@ -22,17 +24,44 @@ else:
 st.title("🏆 AI-Powered Restaurant Management Challenges")
 st.write("**Objective:** Solve real-time restaurant challenges using AI predictions to optimize operations, staffing, and menu decisions.")
 
-# Challenge Selection
-challenges = [
-    "Dynamic AI Adjustments for Peak Hours",
-    "Inventory Optimization",
-    "Customer Personalization & Upselling",
-    "Energy Efficiency Management",
-    "Seasonal Menu Adaptation"
-]
-selected_challenge = st.selectbox("🔍 Select Your Challenge:", challenges)
+# Firebase Initialization
+if not firebase_admin._apps:
+    cred = credentials.Certificate("firebase_credentials.json")  # Add Firebase credentials file
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': 'https://your-firebase-database.firebaseio.com/'
+    })
 
-# Simulated AI Predictions with ML Model
+# Multiplayer Progress Tracking
+st.sidebar.title("🏅 Progress Tracking")
+user_id = st.sidebar.text_input("Enter Manager ID:")
+if user_id:
+    user_ref = db.reference(f'users/{user_id}/progress')
+    past_scores = user_ref.get() or {}
+    st.sidebar.write("📊 **Your Past Challenges:**")
+    for record in past_scores.values():
+        st.sidebar.write(f"🗓 {record['date']}: {record['challenge']} - (Score: {record['score']}/5)")
+
+# AI Chatbot Assistance
+st.sidebar.title("🤖 AI Strategy Assistant")
+chat_input = st.sidebar.text_area("Ask AI for help:")
+if st.sidebar.button("Get AI Advice") and chat_input:
+    response = genai.generate(chat_input)
+    st.sidebar.write("💡 AI Suggests:", response)
+
+# Challenge Selection
+challenges = {
+    "Dynamic AI Adjustments for Peak Hours": 5,
+    "Inventory Optimization": 4,
+    "Customer Personalization & Upselling": 3,
+    "Energy Efficiency Management": 4,
+    "Seasonal Menu Adaptation": 3
+}
+selected_challenge = st.selectbox("🔍 Select Your Challenge:", list(challenges.keys()))
+
+def get_difficulty_multiplier(challenge):
+    return challenges[challenge] * 0.2  # Scaling difficulty multiplier
+
+# AI Model Training
 @st.cache_resource
 def train_ml_model():
     np.random.seed(42)
@@ -49,7 +78,6 @@ def train_ml_model():
 
 model, model_error = train_ml_model()
 
-@st.cache_data
 def predict_peak_traffic(date):
     np.random.seed(hash(date) % 1000)
     return np.random.randint(50, 200)
@@ -62,19 +90,16 @@ previous_month_data = {
     "labor_cost_percentage": 32,
 }
 
-@st.cache_data
 def adjust_staffing(predicted_traffic):
     return 5 + (predicted_traffic // 40)
 
-@st.cache_data
 def dynamic_menu_adjustment(predicted_traffic):
     return ["Fast-prep meals", "Combo offers"] if predicted_traffic > 150 else ["Regular menu", "Limited specials"]
 
-@st.cache_data
-def evaluate_performance(current_data):
+def evaluate_performance(current_data, difficulty_multiplier):
     score = sum([
-        current_data["avg_wait_time"] <= previous_month_data["avg_wait_time"] * 0.85,
-        current_data["table_turnover_rate"] >= previous_month_data["table_turnover_rate"] * 1.1,
+        current_data["avg_wait_time"] <= previous_month_data["avg_wait_time"] * (0.85 - difficulty_multiplier),
+        current_data["table_turnover_rate"] >= previous_month_data["table_turnover_rate"] * (1.1 + difficulty_multiplier),
         current_data["customer_satisfaction"] >= 4.5,
         current_data["labor_cost_percentage"] <= 30,
         "Fast-prep meals" in current_data["menu_adjustments"]
@@ -87,20 +112,10 @@ predicted_traffic = predict_peak_traffic(today)
 recommended_staffing = adjust_staffing(predicted_traffic)
 menu_suggestions = dynamic_menu_adjustment(predicted_traffic)
 
+difficulty_multiplier = get_difficulty_multiplier(selected_challenge)
+
 # Predict wait time using ML Model
 predicted_wait_time = model.predict([[predicted_traffic, recommended_staffing, previous_month_data["labor_cost_percentage"]]])[0]
-
-@st.cache_resource
-def create_lstm_model():
-    model = keras.Sequential([
-        keras.layers.LSTM(50, activation='relu', input_shape=(3, 1), return_sequences=True),
-        keras.layers.LSTM(50, activation='relu'),
-        keras.layers.Dense(1)
-    ])
-    model.compile(optimizer='adam', loss='mse')
-    return model
-
-lstm_model = create_lstm_model()
 
 # Simulated Current Performance Data
 current_data = {
@@ -111,19 +126,22 @@ current_data = {
     "menu_adjustments": menu_suggestions
 }
 
-# Gamification Score & Reward Tiers
-score = evaluate_performance(current_data)
-reward_tier = "🎖 Tier 3 (Good Effort)"
-if score >= 5:
-    reward_tier = "🏆 Tier 1 (Champion!)"
-elif score >= 4:
-    reward_tier = "🥈 Tier 2 (Great Job!)"
+# Gamification Score Calculation
+score = evaluate_performance(current_data, difficulty_multiplier)
 
-# Display Results with Progress Bar
-st.progress(score / 5)
+# Store Progress in Firebase
+db.reference(f'users/{user_id}/progress/{today}').set({
+    "challenge": selected_challenge,
+    "score": score,
+    "date": today
+})
+
+# Display Challenge Information
 st.write(f"📊 **Predicted Traffic:** {predicted_traffic} customers")
 st.write(f"👨‍🍳 **Recommended Staff:** {recommended_staffing} members")
 st.write(f"🍽 **Menu Adjustments:** {menu_suggestions}")
 st.write(f"⌛ **Predicted Wait Time:** {predicted_wait_time:.2f} minutes (ML Model Error: ±{model_error:.2f} min)")
 st.write(f"🎯 **Performance Score:** {score}/5")
-st.subheader(f"🏅 **Achieved Reward Tier:** {reward_tier}")
+
+# Hide Final Result
+st.write("✅ Challenge Attempt Recorded. Keep improving and track your progress in the sidebar!")
