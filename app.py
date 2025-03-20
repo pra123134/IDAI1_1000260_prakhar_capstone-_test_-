@@ -33,7 +33,7 @@ challenges = [
 selected_challenge = st.selectbox("🔍 Select Your Challenge:", challenges)
 
 # Simulated AI Predictions with ML Model
-@st.cache_data
+@st.cache_resource
 def train_ml_model():
     np.random.seed(42)
     data_size = 1000
@@ -41,7 +41,7 @@ def train_ml_model():
     y = np.random.randint(8, 20, data_size)  # Wait time prediction
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = xgb.XGBRegressor(n_estimators=200, learning_rate=0.1, random_state=42)
+    model = xgb.XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     error = mean_absolute_error(y_test, y_pred)
@@ -49,6 +49,7 @@ def train_ml_model():
 
 model, model_error = train_ml_model()
 
+@st.cache_data
 def predict_peak_traffic(date):
     np.random.seed(hash(date) % 1000)
     return np.random.randint(50, 200)
@@ -61,13 +62,15 @@ previous_month_data = {
     "labor_cost_percentage": 32,
 }
 
+@st.cache_data
 def adjust_staffing(predicted_traffic):
-    base_staff = 5
-    return base_staff + (predicted_traffic // 40)
+    return 5 + (predicted_traffic // 40)
 
+@st.cache_data
 def dynamic_menu_adjustment(predicted_traffic):
     return ["Fast-prep meals", "Combo offers"] if predicted_traffic > 150 else ["Regular menu", "Limited specials"]
 
+@st.cache_data
 def evaluate_performance(current_data):
     score = sum([
         current_data["avg_wait_time"] <= previous_month_data["avg_wait_time"] * 0.85,
@@ -87,7 +90,7 @@ menu_suggestions = dynamic_menu_adjustment(predicted_traffic)
 # Predict wait time using ML Model
 predicted_wait_time = model.predict([[predicted_traffic, recommended_staffing, previous_month_data["labor_cost_percentage"]]])[0]
 
-# Deep Learning Forecasting Model (LSTM)
+@st.cache_resource
 def create_lstm_model():
     model = keras.Sequential([
         keras.layers.LSTM(50, activation='relu', input_shape=(3, 1), return_sequences=True),
