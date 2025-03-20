@@ -13,23 +13,22 @@ import firebase_admin
 from firebase_admin import credentials, db
 
 # ✅ Configure API Key securely
-if "GOOGLE_API_KEY" in st.secrets:
-    api_key = st.secrets["GOOGLE_API_KEY"]
+api_key = st.secrets.get("GOOGLE_API_KEY")
+if api_key:
     genai.configure(api_key=api_key)
 else:
-    st.error("⚠️ API Key is missing. Go to Streamlit Cloud → Settings → Secrets and add your API key.")
+    st.error("⚠️ API Key is missing. Add it in Streamlit Secrets.")
     st.stop()
 
 # 🎮 AI Gamified Challenges for Restaurant Management
+st.set_page_config(page_title="AI Restaurant Challenges", layout="wide")
 st.title("🏆 AI-Powered Restaurant Management Challenges")
 st.write("**Objective:** Solve real-time restaurant challenges using AI predictions to optimize operations, staffing, and menu decisions.")
 
 # Firebase Initialization
 if not firebase_admin._apps:
-    cred = credentials.Certificate("firebase_credentials.json")  # Add Firebase credentials file
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://your-firebase-database.firebaseio.com/'
-    })
+    cred = credentials.Certificate(st.secrets["FIREBASE_CREDENTIALS"])
+    firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["FIREBASE_DB_URL"]})
 
 # Multiplayer Progress Tracking
 st.sidebar.title("🏅 Progress Tracking")
@@ -37,9 +36,9 @@ user_id = st.sidebar.text_input("Enter Manager ID:")
 if user_id:
     user_ref = db.reference(f'users/{user_id}/progress')
     past_scores = user_ref.get() or {}
-    st.sidebar.write("📊 **Your Past Challenges:**")
-    for record in past_scores.values():
-        st.sidebar.write(f"🗓 {record['date']}: {record['challenge']} - (Score: {record['score']}/5)")
+    with st.sidebar.expander("📊 Your Past Challenges"):
+        for record in past_scores.values():
+            st.write(f"🗓 {record['date']}: {record['challenge']} - (Score: {record['score']}/5)")
 
 # AI Chatbot Assistance
 st.sidebar.title("🤖 AI Strategy Assistant")
@@ -59,7 +58,7 @@ challenges = {
 selected_challenge = st.selectbox("🔍 Select Your Challenge:", list(challenges.keys()))
 
 def get_difficulty_multiplier(challenge):
-    return challenges[challenge] * 0.2  # Scaling difficulty multiplier
+    return challenges[challenge] * 0.2
 
 # AI Model Training
 @st.cache_resource
@@ -97,14 +96,13 @@ def dynamic_menu_adjustment(predicted_traffic):
     return ["Fast-prep meals", "Combo offers"] if predicted_traffic > 150 else ["Regular menu", "Limited specials"]
 
 def evaluate_performance(current_data, difficulty_multiplier):
-    score = sum([
+    return sum([
         current_data["avg_wait_time"] <= previous_month_data["avg_wait_time"] * (0.85 - difficulty_multiplier),
         current_data["table_turnover_rate"] >= previous_month_data["table_turnover_rate"] * (1.1 + difficulty_multiplier),
         current_data["customer_satisfaction"] >= 4.5,
         current_data["labor_cost_percentage"] <= 30,
         "Fast-prep meals" in current_data["menu_adjustments"]
     ])
-    return score
 
 # AI Dashboard Execution
 today = datetime.today().strftime('%Y-%m-%d')
@@ -130,18 +128,21 @@ current_data = {
 score = evaluate_performance(current_data, difficulty_multiplier)
 
 # Store Progress in Firebase
-db.reference(f'users/{user_id}/progress/{today}').set({
-    "challenge": selected_challenge,
-    "score": score,
-    "date": today
-})
+if user_id:
+    db.reference(f'users/{user_id}/progress/{today}').set({
+        "challenge": selected_challenge,
+        "score": score,
+        "date": today
+    })
 
 # Display Challenge Information
-st.write(f"📊 **Predicted Traffic:** {predicted_traffic} customers")
-st.write(f"👨‍🍳 **Recommended Staff:** {recommended_staffing} members")
-st.write(f"🍽 **Menu Adjustments:** {menu_suggestions}")
-st.write(f"⌛ **Predicted Wait Time:** {predicted_wait_time:.2f} minutes (ML Model Error: ±{model_error:.2f} min)")
-st.write(f"🎯 **Performance Score:** {score}/5")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric(label="📊 Predicted Traffic", value=f"{predicted_traffic} customers")
+with col2:
+    st.metric(label="👨‍🍳 Recommended Staff", value=f"{recommended_staffing} members")
+with col3:
+    st.metric(label="⌛ Predicted Wait Time", value=f"{predicted_wait_time:.2f} min", delta=f"±{model_error:.2f} min")
 
-# Hide Final Result
-st.write("✅ Challenge Attempt Recorded. Keep improving and track your progress in the sidebar!")
+st.write(f"🍽 **Menu Adjustments:** {menu_suggestions}")
+st.success("✅ Challenge Attempt Recorded. Track your progress in the sidebar!")
