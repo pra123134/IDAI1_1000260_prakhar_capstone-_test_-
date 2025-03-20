@@ -9,8 +9,6 @@ from sklearn.metrics import mean_absolute_error
 import google.generativeai as genai
 import time
 from datetime import datetime
-import firebase_admin
-from firebase_admin import credentials, db
 
 # ✅ Configure API Key securely
 api_key = st.secrets.get("GOOGLE_API_KEY")
@@ -25,20 +23,9 @@ st.set_page_config(page_title="AI Restaurant Challenges", layout="wide")
 st.title("🏆 AI-Powered Restaurant Management Challenges")
 st.write("**Objective:** Solve real-time restaurant challenges using AI predictions to optimize operations, staffing, and menu decisions.")
 
-# Firebase Initialization
-if not firebase_admin._apps:
-    cred = credentials.Certificate(st.secrets["FIREBASE_CREDENTIALS"])
-    firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["FIREBASE_DB_URL"]})
-
 # Multiplayer Progress Tracking
 st.sidebar.title("🏅 Progress Tracking")
 user_id = st.sidebar.text_input("Enter Manager ID:")
-if user_id:
-    user_ref = db.reference(f'users/{user_id}/progress')
-    past_scores = user_ref.get() or {}
-    with st.sidebar.expander("📊 Your Past Challenges"):
-        for record in past_scores.values():
-            st.write(f"🗓 {record['date']}: {record['challenge']} - (Score: {record['score']}/5)")
 
 # AI Chatbot Assistance
 st.sidebar.title("🤖 AI Strategy Assistant")
@@ -126,14 +113,6 @@ current_data = {
 
 # Gamification Score Calculation
 score = evaluate_performance(current_data, difficulty_multiplier)
-
-# Store Progress in Firebase
-if user_id:
-    db.reference(f'users/{user_id}/progress/{today}').set({
-        "challenge": selected_challenge,
-        "score": score,
-        "date": today
-    })
 
 # Display Challenge Information
 col1, col2, col3 = st.columns(3)
