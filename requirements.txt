@@ -1,7 +1,6 @@
-streamlit
-numpy
+google.generativeai
 pandas
-xgboost
-tensorflow
-scikit-learn
-google-generativeai
+streamlit
+time
+matplotlib.pyplot 
+seaborn 
