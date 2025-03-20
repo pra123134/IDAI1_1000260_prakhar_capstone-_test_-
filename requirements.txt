@@ -1,5 +1,7 @@
 streamlit
 numpy
 pandas
+xgboost
+tensorflow
 scikit-learn
 google-generativeai
