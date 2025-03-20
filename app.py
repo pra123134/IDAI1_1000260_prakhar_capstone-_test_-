@@ -2,8 +2,24 @@ import streamlit as st
 import random
 import google.generativeai as genai
 
-# Configure Gemini API
-genai.configure(api_key="YOUR_GEMINI_API_KEY")
+# ✅ Configure API Key securely
+if "GOOGLE_API_KEY" in st.secrets:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=api_key)
+else:
+    st.error("⚠️ API Key is missing. Go to Streamlit Cloud → Settings → Secrets and add your API key.")
+    st.stop()
+
+# ✅ AI Response Generator
+def get_ai_response(prompt, fallback_message="⚠️ AI response unavailable. Please try again later."):
+    try:
+        model = genai.GenerativeModel("gemini-1.5-pro")
+        response = model.generate_content(prompt)
+        return response.text.strip() if hasattr(response, "text") and response.text.strip() else fallback_message
+    except Exception as e:
+        return f"⚠️ AI Error: {str(e)}\n{fallback_message}"
+
+# ✅ Streamlit UI Configuration
 
 # Quiz questions
 data = [
@@ -46,3 +62,4 @@ if st.button("Submit Quiz"):
         st.info("Good job! Keep improving your skills.")
     else:
         st.warning("You might want to review some restaurant management best practices.")
+
