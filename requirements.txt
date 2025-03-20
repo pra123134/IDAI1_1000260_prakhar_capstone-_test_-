@@ -5,3 +5,4 @@ xgboost
 tensorflow
 scikit-learn
 google-generativeai
+firebase-admin
