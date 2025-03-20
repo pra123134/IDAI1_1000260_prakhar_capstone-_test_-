@@ -1,6 +1,3 @@
-google.generativeai
-pandas
 streamlit
-time
-matplotlib.pyplot 
-seaborn 
+random
+google.generativeai
